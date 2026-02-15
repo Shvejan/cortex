@@ -2394,9 +2394,10 @@ bucket_store:
 
   bucket_index:
     # True to enable querier and store-gateway to discover blocks in the storage
-    # via bucket index instead of bucket scanning.
+    # via bucket index instead of bucket scanning. Disabling the bucket index is
+    # not recommended for production.
     # CLI flag: -blocks-storage.bucket-store.bucket-index.enabled
-    [enabled: <boolean> | default = false]
+    [enabled: <boolean> | default = true]
 
     # How frequently a bucket index, which previously failed to load, should be
     # tried to load again. This option is used only by querier.
@@ -3094,6 +3095,13 @@ ha_tracker:
   # from. This value must be greater than the update timeout
   # CLI flag: -distributor.ha-tracker.failover-timeout
   [ha_tracker_failover_timeout: <duration> | default = 30s]
+
+  # [Experimental] If enabled, fetches all tracked keys on startup to populate
+  # the local cache. This prevents duplicate GET calls for the same key while
+  # the cache is cold, but could cause a spike in GET requests during
+  # initialization if the number of tracked keys is large.
+  # CLI flag: -distributor.ha-tracker.enable-startup-sync
+  [enable_startup_sync: <boolean> | default = false]
 
   # Backend storage to use for the ring. Please be aware that memberlist is not
   # supported by the HA tracker since gossip propagation is too slow for HA

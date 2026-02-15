@@ -60,9 +60,7 @@ Currently experimental features are:
   - Accept Prometheus remote write 2.0 request (`-distributor.remote-writev2-enabled=true`)
 - Tenant Deletion in Purger, for blocks storage.
 - Query-frontend: query stats tracking (`-frontend.query-stats-enabled`)
-- Blocks storage bucket index
-  - The bucket index support in the querier and store-gateway (enabled via `-blocks-storage.bucket-store.bucket-index.enabled=true`) is experimental
-  - The block deletion marks migration support in the compactor (`-compactor.block-deletion-marks-migration-enabled`) is temporarily and will be removed in future versions
+- The block deletion marks migration support in the compactor (`-compactor.block-deletion-marks-migration-enabled`) is temporarily and will be removed in future versions
 - Blocks storage user index
 - Querier: tenant federation
   - `-tenant-federation.enabled`
@@ -146,3 +144,4 @@ Currently experimental features are:
     - `-validation.max-regex-pattern-length` (int) - maximum pattern length in bytes
     - `-validation.max-label-cardinality-for-unoptimized-regex` (int) - maximum label cardinality
     - `-validation.max-total-label-value-length-for-unoptimized-regex` (int) - maximum total length of all label values in bytes
+- HATracker: `-distributor.ha-tracker.enable-startup-sync` (bool) - If enabled, fetches all tracked keys on startup to populate the local cache.

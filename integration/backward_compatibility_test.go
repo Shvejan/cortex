@@ -179,7 +179,6 @@ func TestCanSupportHoltWintersFunc(t *testing.T) {
 			"-blocks-storage.tsdb.retention-period":             "2h",
 			"-blocks-storage.bucket-store.index-cache.backend":  tsdb.IndexCacheBackendInMemory,
 			"-blocks-storage.bucket-store.bucket-index.enabled": "true",
-			"-querier.query-store-for-labels-enabled":           "true",
 			// Ingester.
 			"-ring.store":      "consul",
 			"-consul.hostname": consul.NetworkHTTPEndpoint(),
@@ -272,6 +271,8 @@ func TestCanSupportHoltWintersFunc(t *testing.T) {
 func blocksStorageFlagsWithFlushOnShutdown() map[string]string {
 	return mergeFlags(BlocksStorageFlags(), map[string]string{
 		"-blocks-storage.tsdb.flush-blocks-on-shutdown": "true",
+		// TODO: run a compactor here instead of disabling the bucket-index
+		"-blocks-storage.bucket-store.bucket-index.enabled": "false",
 	})
 }
 

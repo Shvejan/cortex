@@ -111,25 +111,25 @@ type Distributor struct {
 	inflightClientRequests atomic.Int64
 
 	// Metrics
-	queryDuration                         *instrument.HistogramCollector
-	receivedSamples                       *prometheus.CounterVec
-	receivedSamplesPerLabelSet            *prometheus.CounterVec
-	receivedExemplars                     *prometheus.CounterVec
-	receivedMetadata                      *prometheus.CounterVec
-	incomingSamples                       *prometheus.CounterVec
-	incomingExemplars                     *prometheus.CounterVec
-	incomingMetadata                      *prometheus.CounterVec
-	nonHASamples                          *prometheus.CounterVec
-	dedupedSamples                        *prometheus.CounterVec
-	labelsHistogram                       prometheus.Histogram
-	ingesterAppends                       *prometheus.CounterVec
-	ingesterAppendFailures                *prometheus.CounterVec
-	ingesterQueries                       *prometheus.CounterVec
-	ingesterQueryFailures                 *prometheus.CounterVec
-	ingesterPartialDataQueries            prometheus.Counter
-	replicationFactor                     prometheus.Gauge
-	latestSeenSampleTimestampPerUser      *prometheus.GaugeVec
-	distributorIngesterPushTimeoutPerUser *prometheus.CounterVec
+	queryDuration                    *instrument.HistogramCollector
+	receivedSamples                  *prometheus.CounterVec
+	receivedSamplesPerLabelSet       *prometheus.CounterVec
+	receivedExemplars                *prometheus.CounterVec
+	receivedMetadata                 *prometheus.CounterVec
+	incomingSamples                  *prometheus.CounterVec
+	incomingExemplars                *prometheus.CounterVec
+	incomingMetadata                 *prometheus.CounterVec
+	nonHASamples                     *prometheus.CounterVec
+	dedupedSamples                   *prometheus.CounterVec
+	labelsHistogram                  prometheus.Histogram
+	ingesterAppends                  *prometheus.CounterVec
+	ingesterAppendFailures           *prometheus.CounterVec
+	ingesterQueries                  *prometheus.CounterVec
+	ingesterQueryFailures            *prometheus.CounterVec
+	ingesterPartialDataQueries       prometheus.Counter
+	replicationFactor                prometheus.Gauge
+	latestSeenSampleTimestampPerUser *prometheus.GaugeVec
+	distributorIngesterPushTimeout   prometheus.Counter
 
 	validateMetrics *validation.ValidateMetrics
 
@@ -410,10 +410,10 @@ func New(cfg Config, clientConfig ingester_client.Config, limits *validation.Ove
 			Name: "cortex_distributor_latest_seen_sample_timestamp_seconds",
 			Help: "Unix timestamp of latest received sample per user.",
 		}, []string{"user"}),
-		distributorIngesterPushTimeoutPerUser: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+		distributorIngesterPushTimeout: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "cortex_distributor_ingester_push_timeouts_total",
 			Help: "The total number of push requests to ingesters that were canceled due to timeout.",
-		}, []string{"user"}),
+		}),
 
 		validateMetrics: validation.NewValidateMetrics(reg),
 		asyncExecutor:   util.NewNoOpExecutor(),
@@ -776,7 +776,14 @@ func (d *Distributor) Push(ctx context.Context, req *cortexpb.WriteRequest) (*co
 			if errors.Is(err, ha.ReplicasNotMatchError{}) {
 				// These samples have been deduped.
 				d.dedupedSamples.WithLabelValues(userID, cluster).Add(float64(numFloatSamples + numHistogramSamples))
-				return nil, httpgrpc.Errorf(http.StatusAccepted, "%s", err.Error())
+				var dedupResp *cortexpb.WriteResponse
+				if d.cfg.RemoteWriteV2Enabled {
+					dedupResp = &cortexpb.WriteResponse{}
+					dedupResp.Samples = int64(numFloatSamples)
+					dedupResp.Histograms = int64(numHistogramSamples)
+					dedupResp.Exemplars = int64(numExemplars)
+				}
+				return dedupResp, httpgrpc.Errorf(http.StatusAccepted, "%s", err.Error())
 			}
 
 			if errors.Is(err, ha.TooManyReplicaGroupsError{}) {
@@ -939,7 +946,7 @@ func (d *Distributor) doBatch(ctx context.Context, req *cortexpb.WriteRequest, s
 	localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.RemoteTimeout)
 	defer func() {
 		if errors.Is(localCtx.Err(), context.DeadlineExceeded) {
-			d.distributorIngesterPushTimeoutPerUser.WithLabelValues(userID).Inc()
+			d.distributorIngesterPushTimeout.Inc()
 		}
 	}()
 
